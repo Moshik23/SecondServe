@@ -1,0 +1,74 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: foodhawk-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: foodhawk
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - foodhawk-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: foodhawk-backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/foodhawk
+      SECRET_KEY: your-secret-key-change-in-production
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - foodhawk-network
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: foodhawk-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - foodhawk-network
+    restart: unless-stopped
+
+  # Redis for caching (optional, for production)
+  redis:
+    image: redis:7-alpine
+    container_name: foodhawk-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - foodhawk-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  foodhawk-network:
+    driver: bridge

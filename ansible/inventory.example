@@ -1,0 +1,9 @@
+# Ansible inventory file example
+# Copy this to inventory and update with your server details
+
+[web_servers]
+# production-server ansible_host=your-server-ip ansible_user=ubuntu
+# staging-server ansible_host=your-staging-ip ansible_user=ubuntu
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
