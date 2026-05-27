@@ -1,0 +1,15 @@
+# Local Administrative and Data Seeding Utilities
+seed_database.py
+
+# Python bytecode compilation artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environment configuration records
+.env
+vnv/
+env/
+.venv/
