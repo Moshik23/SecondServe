@@ -97,7 +97,7 @@ def get_active_products():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/v1/products", status_code=status.HTTP_211_CREATED)
+@app.post("/api/v1/products", status_code=status.HTTP_201_CREATED)
 def create_surplus_listing(payload: ProductCreateSchema):
     """
     Milestone 3: Vendor Intake Processing Endpoint.
