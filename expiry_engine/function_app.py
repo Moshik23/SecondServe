@@ -19,8 +19,8 @@ DB_PASS = "SecurePassSecondServe2026!"
 def get_db_connection():
     return pymssql.connect(server=DB_SERVER, user=DB_USER, password=DB_PASS, database=DB_NAME)
 
-# CRITICAL HOTFIX: run_on_startup=True forces the sweep to execute the moment Azure boots the container
-@app.schedule(schedule="0 30 6,12 * * *", arg_name="myTimer", run_on_startup=True, use_monitor=True) 
+# CRITICAL HOTFIX: run_on_startup=False forces the sweep to execute the moment Azure boots the container
+@app.schedule(schedule="0 30 6,12 * * *", arg_name="myTimer", run_on_startup=False, use_monitor=True) 
 def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
     logging.info("STARTUP OVERRIDE: SecondServe automated inventory sweep engine initiated.")
 
