@@ -1,4 +1,4 @@
-﻿# ================================================================================
+# ================================================================================
 # PRODUCTION SERVERLESS SOURCE CODE: FUNCTION_APP.PY
 # LOCATION: EXPIRES UNCLAIMED SURPLUS INVENTORY RECORDS TWICE DAILY
 # EXECUTIONS TRIGGERED AT SGT 14:30 AND 20:30 (UTC 06:30 AND 12:30)
@@ -16,13 +16,13 @@ app = func.FunctionApp()
 # Database infrastructure coordinates mapping to Azure SQL Primary Tier
 DB_SERVER = "sqlserver-secondserve-3226.database.windows.net"
 DB_NAME = "db-secondserve"
-DB_USER = "ssadmin"
+# CRITICAL FIX: Appending server name to username guarantees Azure SQL routing success
+DB_USER = "ssadmin@sqlserver-secondserve-3226"
 DB_PASS = "SecurePassSecondServe2026!"
 
 def get_db_connection():
     return pymssql.connect(server=DB_SERVER, user=DB_USER, password=DB_PASS, database=DB_NAME)
 
-# Cron configuration: Fires at minute 30, hours 6 and 12 UTC (14:30 and 20:30 Singapore Time)
 @app.schedule(schedule="0 30 6,12 * * *", arg_name="myTimer", run_on_startup=False, use_monitor=True) 
 def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
     utc_timestamp = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
@@ -34,13 +34,11 @@ def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
 
     connection = None
     try:
-        # Establish connection matrix directly to Azure SQL relational cluster
         connection = get_db_connection()
         cursor = connection.cursor(as_dict=True)
         
         logging.info("Scanning for unrecovered 'Stall Waste' items whose peak windows have expired...")
         
-        # 1. Identify active surplus listings that were prepared but unsold
         select_query = "SELECT ProductID, ProductName, QuantityAvailable FROM Products WHERE QuantityAvailable > 0"
         cursor.execute(select_query)
         unrecovered_records = cursor.fetchall()
@@ -51,7 +49,6 @@ def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
 
         total_scrubbed_items = 0
         
-        # 2. Sequentially process every single item to maintain compliance data logs
         for record in unrecovered_records:
             product_id = record['ProductID']
             product_name = record['ProductName']
@@ -59,7 +56,6 @@ def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
             
             logging.info(f"Scrubbing ProductID {product_id} ({product_name}) - Leftover Quantity: {qty_left}")
             
-            # 3. Execute transactional write using pymssql param binding (%s)
             update_query = """
                 UPDATE Products 
                 SET QuantityAvailable = 0 
@@ -68,7 +64,6 @@ def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
             cursor.execute(update_query, (product_id,))
             total_scrubbed_items += 1
 
-        # Commit changes to permanent Azure SQL storage engine log tables
         connection.commit()
         logging.info(f"SUCCESS: Serverless sweep completed. Total items processed: {total_scrubbed_items}")
 
