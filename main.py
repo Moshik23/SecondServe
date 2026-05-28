@@ -1,14 +1,16 @@
 ﻿# ================================================================================
 # PRODUCTION BACKEND SOURCE CODE: MAIN.PY
 # TARGET LOCATION: REPOSITORY ROOT PATH (dev-containerization BRANCH)
-# PROJECT TARGET: SECONDSERVE SURPLUS RECOVERY ENGINE (VENDOR INTAKE TIER)
+# PROJECT TARGET: SECONDSERVE SURPLUS RECOVERY ENGINE (FULL STACK)
 # COMPLIANCE STANDARD: RULE6FIST MANDATORY FULL RECODE DELIVERABLE
 # ================================================================================
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 import pyodbc
+import os
 
 # Initialize the core FastAPI engine instance
 app = FastAPI(
@@ -34,10 +36,6 @@ DB_PASS = "SecurePassSecondServe2026!"
 DRIVER = "{ODBC Driver 18 for SQL Server}"
 
 class ProductCreateSchema(BaseModel):
-    """
-    Validates incoming JSON payloads arriving from the Vendor Dashboard.
-    Ensures strict type compliance before firing relational SQL transactions.
-    """
     vendor_id: int = Field(..., description="The unique database ID of the registered hawker vendor", example=1)
     product_name: str = Field(..., max_length=150, description="The name of the surplus item being listed", example="Mutton Biryani")
     category: str = Field(..., max_length=100, description="Food category mapping classification", example="Meals")
@@ -46,17 +44,13 @@ class ProductCreateSchema(BaseModel):
     quantity_available: int = Field(..., gt=0, description="The total number of portions available for recovery")
     image_url: str = Field("/assets/default-food.jpg", max_length=500, description="Storage path for image visibility")
 
-
 def get_db_connection():
     conn_str = f"DRIVER={DRIVER};SERVER={DB_SERVER};DATABASE={DB_NAME};UID={DB_USER};PWD={DB_PASS};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
     return pyodbc.connect(conn_str)
 
-
-@app.get("/")
-def read_root():
-    return {"status": "online", "project": "SecondServe"}
-
-
+# --------------------------------------------------------------------------------
+# CORE BACKEND API ROUTES
+# --------------------------------------------------------------------------------
 @app.get("/api/v1/diagnostics/database")
 def db_health_check():
     try:
@@ -67,7 +61,6 @@ def db_health_check():
         return {"database_status": "connected", "message": "Successfully authenticated with db-secondserve"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/api/v1/products")
 def get_active_products():
@@ -96,13 +89,8 @@ def get_active_products():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/api/v1/products", status_code=status.HTTP_201_CREATED)
 def create_surplus_listing(payload: ProductCreateSchema):
-    """
-    Milestone 3: Vendor Intake Processing Endpoint.
-    Inserts validated surplus data into the Azure SQL backend.
-    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -111,10 +99,7 @@ def create_surplus_listing(payload: ProductCreateSchema):
         vendor_exists = cursor.fetchone()
         if not vendor_exists:
             conn.close()
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Vendor validation failed: ID {payload.vendor_id} does not exist."
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vendor validation failed: ID {payload.vendor_id} does not exist.")
         
         insert_query = """
             INSERT INTO Products (VendorID, ProductName, Category, OriginalPrice, CurrentDiscountPrice, QuantityAvailable, ImageUrl, CreatedAt)
@@ -144,11 +129,19 @@ def create_surplus_listing(payload: ProductCreateSchema):
                 "discount_price": payload.discount_price
             }
         }
-        
     except HTTPException as http_err:
         raise http_err
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Critical transaction drop on Azure SQL: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Critical transaction drop on Azure SQL: {str(e)}")
+
+# --------------------------------------------------------------------------------
+# FRONTEND MOUNTING LAYER
+# --------------------------------------------------------------------------------
+# This intercepts root traffic and serves the compiled React Webpack 'dist' folder
+dist_path = os.path.join(os.path.dirname(__file__), "dist")
+if os.path.exists(dist_path):
+    app.mount("/", StaticFiles(directory=dist_path, html=True), name="frontend")
+else:
+    @app.get("/")
+    def read_root():
+        return {"status": "online", "project": "SecondServe", "message": "Backend active, awaiting React compilation layers."}
