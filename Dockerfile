@@ -1,4 +1,4 @@
-﻿# Use official lean Python runtime environment substrate (Debian 12 Bookworm)
+﻿# Use official lean Python runtime environment substrate
 FROM python:3.11-slim
 
 # Enforce immediate log flushing to capture serverless outputs instantly
@@ -18,16 +18,8 @@ RUN apt-get update && apt-get install -y \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy configuration matrices over to the container engine root folder
-COPY package.json webpack.config.js .babelrc ./
-COPY public/ ./public
-COPY src/ ./src
-
-# Install Node and run Webpack compilation layers natively inside build execution
-RUN apt-get update && apt-get install -y nodejs npm \
-    && npm install \
-    && npm run build \
-    && rm -rf node_modules
+# Copy the pre-compiled frontend assets built by the Azure Pipeline agent directly into place
+COPY dist/ ./dist/
 
 # Copy primary Python configurations over to the operational path
 COPY requirements.txt main.py ./
@@ -39,5 +31,5 @@ RUN pip install --no-cache-dir -r expiry_engine/requirements.txt
 
 EXPOSE 8000
 
-# Fire up the high-availability Uvicorn engine matrix to launch our full-stack web shell
+# Fire up the Uvicorn engine matrix to launch our full-stack web shell
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
