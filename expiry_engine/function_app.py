@@ -8,24 +8,19 @@
 import azure.functions as func
 import logging
 import datetime
-import pyodbc
+import pymssql
 
 # Initialize the global serverless function app engine architecture interface
 app = func.FunctionApp()
 
 # Database infrastructure coordinates mapping to Azure SQL Primary Tier
-DB_SERVER = "tcp:sqlserver-secondserve-3226.database.windows.net,1433"
+DB_SERVER = "sqlserver-secondserve-3226.database.windows.net"
 DB_NAME = "db-secondserve"
 DB_USER = "ssadmin"
 DB_PASS = "SecurePassSecondServe2026!"
-DRIVER = "{ODBC Driver 18 for SQL Server}"
 
 def get_db_connection():
-    conn_str = (
-        f"DRIVER={DRIVER};SERVER={DB_SERVER};DATABASE={DB_NAME};"
-        f"UID={DB_USER};PWD={DB_PASS};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
-    )
-    return pyodbc.connect(conn_str)
+    return pymssql.connect(server=DB_SERVER, user=DB_USER, password=DB_PASS, database=DB_NAME)
 
 # Cron configuration: Fires at minute 30, hours 6 and 12 UTC (14:30 and 20:30 Singapore Time)
 @app.schedule(schedule="0 30 6,12 * * *", arg_name="myTimer", run_on_startup=False, use_monitor=True) 
@@ -41,7 +36,7 @@ def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
     try:
         # Establish connection matrix directly to Azure SQL relational cluster
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(as_dict=True)
         
         logging.info("Scanning for unrecovered 'Stall Waste' items whose peak windows have expired...")
         
@@ -58,19 +53,19 @@ def automated_surplus_expiry_sweeper(myTimer: func.TimerRequest) -> None:
         
         # 2. Sequentially process every single item to maintain compliance data logs
         for record in unrecovered_records:
-            product_id = record.ProductID
-            product_name = record.ProductName
-            qty_left = record.QuantityAvailable
+            product_id = record['ProductID']
+            product_name = record['ProductName']
+            qty_left = record['QuantityAvailable']
             
             logging.info(f"Scrubbing ProductID {product_id} ({product_name}) - Leftover Quantity: {qty_left}")
             
-            # 3. Execute transactional write to nullify availability and flag record as expired
+            # 3. Execute transactional write using pymssql param binding (%s)
             update_query = """
                 UPDATE Products 
                 SET QuantityAvailable = 0 
-                WHERE ProductID = ?
+                WHERE ProductID = %s
             """
-            cursor.execute(update_query, product_id)
+            cursor.execute(update_query, (product_id,))
             total_scrubbed_items += 1
 
         # Commit changes to permanent Azure SQL storage engine log tables
