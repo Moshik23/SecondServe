@@ -32,6 +32,9 @@ module.exports = {
       template: path.resolve(__dirname, 'public/index.html'),
       filename: 'index.html'
     }),
+    new webpack.DefinePlugin({
+      'process.env': JSON.stringify({})
+    }),
     new webpack.ProvidePlugin({
       process: 'process/browser',
     }),
