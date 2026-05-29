@@ -139,15 +139,21 @@ def create_surplus_listing(payload: ProductCreateSchema):
             detail=f"Critical transaction drop on Azure SQL: {str(e)}")
 
 # --------------------------------------------------------------------------------
-# FRONTEND MOUNTING & SPA ROUTING FALLBACK LAYER
+# FRONTEND MOUNTING & FIXED ROUTING PREFERENCE LAYER
 # --------------------------------------------------------------------------------
 dist_path = os.path.join(os.path.dirname(__file__), "dist")
 
 if os.path.exists(dist_path):
-    # Mount the actual build target directory to serve standard static files natively
-    app.mount("/static", StaticFiles(directory=dist_path), name="static")
-    
-    # Catch-all routing path to pipe user navigation refreshes directly into React
+    # Route specifically named assets directly to stop them from dropping into the catch-all
+    @app.get("/bundle.js")
+    def serve_js_bundle():
+        return FileResponse(os.path.join(dist_path, "bundle.js"), media_type="application/javascript")
+
+    @app.get("/index.html")
+    def serve_html_index():
+        return FileResponse(os.path.join(dist_path, "index.html"), media_type="text/html")
+
+    # Catch-all routing path to pipe web navigation refreshes directly into React
     @app.get("/{catchall:path}")
     def serve_frontend_spa(catchall: str):
         # Allow internal API routes to drop through directly to the handlers above
