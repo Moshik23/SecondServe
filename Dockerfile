@@ -25,10 +25,6 @@ COPY dist/ ./dist/
 COPY requirements.txt main.py ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Integrate serverless function background trigger application files
-COPY expiry_engine/ ./expiry_engine/
-RUN pip install --no-cache-dir -r expiry_engine/requirements.txt
-
 EXPOSE 8000
 
 # Fire up the Uvicorn engine matrix to launch our full-stack web shell
