@@ -1,13 +1,14 @@
 ﻿# ================================================================================
 # PRODUCTION BACKEND SOURCE CODE: MAIN.PY
-# TARGET LOCATION: REPOSITORY ROOT PATH (dev-containerization BRANCH)
+# TARGET LOCATION: REPOSITORY ROOT PATH
 # PROJECT TARGET: SECONDSERVE SURPLUS RECOVERY ENGINE (FULL STACK)
-# COMPLIANCE STANDARD: RULE6FIST MANDATORY FULL RECODE DELIVERABLE
+# COMPLIANCE STANDARD: RULE5FIST MANDATORY FULL RECODE DELIVERABLE
 # ================================================================================
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 import pyodbc
 import os
@@ -28,12 +29,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Database connection parameters derived directly from Phase 1 Infrastructure Runbook
-DB_SERVER = "tcp:sqlserver-secondserve-3226.database.windows.net,1433"
-DB_NAME = "db-secondserve"
-DB_USER = "ssadmin"
-DB_PASS = "SecurePassSecondServe2026!"
-DRIVER = "{ODBC Driver 18 for SQL Server}"
+# Core Infrastructure Parameter Fallback Matrix (Environment Variable Mapping)
+DB_SERVER = os.getenv("DB_SERVER", "tcp:sqlserver-secondserve-3226.database.windows.net,1433")
+DB_NAME = os.getenv("DB_NAME", "db-secondserve")
+DB_USER = os.getenv("DB_USER", "ssadmin")
+DB_PASS = os.getenv("DB_PASS", "SecurePassSecondServe2026!")
+DRIVER = os.getenv("DB_DRIVER", "{ODBC Driver 18 for SQL Server}")
 
 class ProductCreateSchema(BaseModel):
     vendor_id: int = Field(..., description="The unique database ID of the registered hawker vendor", example=1)
@@ -60,7 +61,8 @@ def db_health_check():
         conn.close()
         return {"database_status": "connected", "message": "Successfully authenticated with db-secondserve"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, \
+            detail=f"Database connectivity check failed on operational substrate: {str(e)}")
 
 @app.get("/api/v1/products")
 def get_active_products():
@@ -99,7 +101,8 @@ def create_surplus_listing(payload: ProductCreateSchema):
         vendor_exists = cursor.fetchone()
         if not vendor_exists:
             conn.close()
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vendor validation failed: ID {payload.vendor_id} does not exist.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, \
+                detail=f"Vendor validation failed: ID {payload.vendor_id} does not exist.")
         
         insert_query = """
             INSERT INTO Products (VendorID, ProductName, Category, OriginalPrice, CurrentDiscountPrice, QuantityAvailable, ImageUrl, CreatedAt)
@@ -132,15 +135,31 @@ def create_surplus_listing(payload: ProductCreateSchema):
     except HTTPException as http_err:
         raise http_err
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Critical transaction drop on Azure SQL: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, \
+            detail=f"Critical transaction drop on Azure SQL: {str(e)}")
 
 # --------------------------------------------------------------------------------
-# FRONTEND MOUNTING LAYER
+# FRONTEND MOUNTING & FIXED ROUTING PREFERENCE LAYER
 # --------------------------------------------------------------------------------
-# This intercepts root traffic and serves the compiled React Webpack 'dist' folder
 dist_path = os.path.join(os.path.dirname(__file__), "dist")
+
 if os.path.exists(dist_path):
-    app.mount("/", StaticFiles(directory=dist_path, html=True), name="frontend")
+    # Route specifically named assets directly to stop them from dropping into the catch-all
+    @app.get("/bundle.js")
+    def serve_js_bundle():
+        return FileResponse(os.path.join(dist_path, "bundle.js"), media_type="application/javascript")
+
+    @app.get("/index.html")
+    def serve_html_index():
+        return FileResponse(os.path.join(dist_path, "index.html"), media_type="text/html")
+
+    # Catch-all routing path to pipe web navigation refreshes directly into React
+    @app.get("/{catchall:path}")
+    def serve_frontend_spa(catchall: str):
+        # Allow internal API routes to drop through directly to the handlers above
+        if catchall.startswith("api/v1"):
+            raise HTTPException(status_code=404, detail="API Route endpoint trace not found.")
+        return FileResponse(os.path.join(dist_path, "index.html"))
 else:
     @app.get("/")
     def read_root():
