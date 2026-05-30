@@ -13,7 +13,8 @@ export default function App() {
   const [discountPrice, setDiscountPrice] = useState("");
   const [quantity, setQuantity] = useState("");
 
-  const API_BASE_URL = "https://aca-secondserve-backend.grayflower-7cb2a4a2.southeastasia.azurecontainerapps.io/api/v1/products";
+  // FIXED: Re-aligned API base routing domain context to target the new live Azure Container App environment substrate
+  const API_BASE_URL = "https://aca-secondserve-backend.livelybay-f6fd5e2b.southeastasia.azurecontainerapps.io/api/v1/products";
 
   useEffect(() => {
     if (activeTab === "customer") {
@@ -60,6 +61,9 @@ export default function App() {
         setOriginalPrice("");
         setDiscountPrice("");
         setQuantity("");
+        if (activeTab === "customer") {
+          fetchSurplusData();
+        }
       } else {
         setSystemMessage("ERROR: Transaction rejected by backend.");
       }
@@ -98,17 +102,21 @@ export default function App() {
         {activeTab === "customer" ? (
           <div>
             <h2 style={{ fontSize: "14px", color: "#605E5C", marginBottom: "12px", textTransform: "uppercase" }}>Hyperlocal Deals Shelf</h2>
-            {surplusItems.map((item, idx) => (
-              <div key={idx} style={styles.card}>
-                <span style={styles.tag}>{item.Quantity} Portions Left</span>
-                <div style={styles.title}>{item.ProductName}</div>
-                <div style={styles.priceRow}>
-                  <span style={styles.newPrice}>${item.DiscountPrice.toFixed(2)}</span>
-                  <span style={styles.oldPrice}>Original Price</span>
+            {surplusItems && surplusItems.length > 0 ? (
+              surplusItems.map((item, idx) => (
+                <div key={idx} style={styles.card}>
+                  <span style={styles.tag}>{item.Quantity || item.quantity_available || 0} Portions Left</span>
+                  <div style={styles.title}>{item.ProductName || item.product_name}</div>
+                  <div style={styles.priceRow}>
+                    <span style={styles.newPrice}>${(item.DiscountPrice || item.discount_price || 0).toFixed(2)}</span>
+                    <span style={styles.oldPrice}>Original Price</span>
+                  </div>
+                  <div style={styles.location}>📍 {item.Location || "Default Node Station"}</div>
                 </div>
-                <div style={styles.location}>📍 {item.Location}</div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div style={styles.alert}>No active surplus listed on this cloud subscription workspace node.</div>
+            )}
           </div>
         ) : (
           <div>
