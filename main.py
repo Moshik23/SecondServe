@@ -13,14 +13,12 @@ from pydantic import BaseModel, Field
 import pyodbc
 import os
 
-# Initialize the core FastAPI engine instance
 app = FastAPI(
     title="SecondServe Core API",
     description="Cloud-Native Surplus Recovery Backend integrating Azure SQL",
     version="1.0.0"
 )
 
-# Configure cross-origin resource sharing to expose endpoints safely to the frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,8 +27,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Core Infrastructure Parameter Fallback Matrix (Environment Variable Mapping)
-DB_SERVER = os.getenv("DB_SERVER", "tcp:sqlserver-secondserve-3226.database.windows.net,1433")
+# FIXED: Fallback routing server aligned to the active new subscription context
+DB_SERVER = os.getenv("DB_SERVER", "tcp:sqlserver-secondserve-3226new.database.windows.net,1433")
 DB_NAME = os.getenv("DB_NAME", "db-secondserve")
 DB_USER = os.getenv("DB_USER", "ssadmin")
 DB_PASS = os.getenv("DB_PASS", "SecurePassSecondServe2026!")
@@ -50,6 +48,55 @@ def get_db_connection():
     return pyodbc.connect(conn_str)
 
 # --------------------------------------------------------------------------------
+# NEW: NATIVE APPLICATION DATABASE AUTO-SEED ENDPOINT
+# --------------------------------------------------------------------------------
+@app.get("/api/v1/diagnostics/seed")
+def seed_database_native():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Seed Vendors Table
+        cursor.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vendors')
+        BEGIN
+            CREATE TABLE Vendors (
+                VendorID INT PRIMARY KEY,
+                VendorName NVARCHAR(100) NOT NULL,
+                StallLocation NVARCHAR(200) NOT NULL
+            );
+            INSERT INTO Vendors (VendorID, VendorName, StallLocation) 
+            VALUES (1, 'Bedok Hawker Center - Stall 14', 'Bedok North Street 1, Singapore');
+        END;
+        """)
+
+        # Seed Products Table
+        cursor.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products')
+        BEGIN
+            CREATE TABLE Products (
+                ProductID INT IDENTITY(1,1) PRIMARY KEY,
+                VendorID INT FOREIGN KEY REFERENCES Vendors(VendorID),
+                ProductName NVARCHAR(150) NOT NULL,
+                Category NVARCHAR(100) NOT NULL,
+                OriginalPrice DECIMAL(10,2) NOT NULL,
+                CurrentDiscountPrice DECIMAL(10,2) NOT NULL,
+                QuantityAvailable INT NOT NULL,
+                ImageUrl NVARCHAR(500) NULL,
+                CreatedAt DATETIME NOT NULL
+            );
+            INSERT INTO Products (VendorID, ProductName, Category, OriginalPrice, CurrentDiscountPrice, QuantityAvailable, ImageUrl, CreatedAt)
+            VALUES (1, 'Signature Chicken Rice', 'Meals', 4.50, 2.50, 5, '/assets/default-food.jpg', GETDATE());
+        END;
+        """)
+
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": "Database successfully seeded natively via Azure application backend."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Native DB Seed Failed: {str(e)}")
+
+# --------------------------------------------------------------------------------
 # CORE BACKEND API ROUTES
 # --------------------------------------------------------------------------------
 @app.get("/api/v1/diagnostics/database")
@@ -61,8 +108,7 @@ def db_health_check():
         conn.close()
         return {"database_status": "connected", "message": "Successfully authenticated with db-secondserve"}
     except Exception as e:
-        raise HTTPException(status_code=500, \
-            detail=f"Database connectivity check failed on operational substrate: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database connectivity check failed on operational substrate: {str(e)}")
 
 @app.get("/api/v1/products")
 def get_active_products():
@@ -70,13 +116,13 @@ def get_active_products():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT p.ProductID, p.ProductName, p.CurrentDiscountPrice, p.QuantityAvailable, v.StallLocation 
+            SELECT p.ProductID, p.ProductName, p.CurrentDiscountPrice, p.QuantityAvailable, v.StallLocation
             FROM Products p
             JOIN Vendors v ON p.VendorID = v.VendorID
             WHERE p.QuantityAvailable > 0
         """)
         rows = cursor.fetchall()
-        
+
         products = []
         for row in rows:
             products.append({
@@ -96,47 +142,27 @@ def create_surplus_listing(payload: ProductCreateSchema):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT VendorID FROM Vendors WHERE VendorID = ?", payload.vendor_id)
         vendor_exists = cursor.fetchone()
         if not vendor_exists:
             conn.close()
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, \
-                detail=f"Vendor validation failed: ID {payload.vendor_id} does not exist.")
-        
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vendor validation failed: ID {payload.vendor_id} does not exist.")
+
         insert_query = """
             INSERT INTO Products (VendorID, ProductName, Category, OriginalPrice, CurrentDiscountPrice, QuantityAvailable, ImageUrl, CreatedAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
         """
-        
-        cursor.execute(
-            insert_query,
-            payload.vendor_id,
-            payload.product_name,
-            payload.category,
-            payload.original_price,
-            payload.discount_price,
-            payload.quantity_available,
-            payload.image_url
-        )
-        
+
+        cursor.execute(insert_query, payload.vendor_id, payload.product_name, payload.category, payload.original_price, payload.discount_price, payload.quantity_available, payload.image_url)
         conn.commit()
         conn.close()
-        
-        return {
-            "status": "success",
-            "message": "Surplus product record successfully injected into SecondServe Shelf",
-            "item_details": {
-                "product_name": payload.product_name,
-                "quantity": payload.quantity_available,
-                "discount_price": payload.discount_price
-            }
-        }
+
+        return {"status": "success", "message": "Surplus product record successfully injected into SecondServe Shelf"}
     except HTTPException as http_err:
         raise http_err
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, \
-            detail=f"Critical transaction drop on Azure SQL: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Critical transaction drop on Azure SQL: {str(e)}")
 
 # --------------------------------------------------------------------------------
 # FRONTEND MOUNTING & FIXED ROUTING PREFERENCE LAYER
@@ -144,7 +170,6 @@ def create_surplus_listing(payload: ProductCreateSchema):
 dist_path = os.path.join(os.path.dirname(__file__), "dist")
 
 if os.path.exists(dist_path):
-    # Route specifically named assets directly to stop them from dropping into the catch-all
     @app.get("/bundle.js")
     def serve_js_bundle():
         return FileResponse(os.path.join(dist_path, "bundle.js"), media_type="application/javascript")
@@ -153,10 +178,8 @@ if os.path.exists(dist_path):
     def serve_html_index():
         return FileResponse(os.path.join(dist_path, "index.html"), media_type="text/html")
 
-    # Catch-all routing path to pipe web navigation refreshes directly into React
     @app.get("/{catchall:path}")
     def serve_frontend_spa(catchall: str):
-        # Allow internal API routes to drop through directly to the handlers above
         if catchall.startswith("api/v1"):
             raise HTTPException(status_code=404, detail="API Route endpoint trace not found.")
         return FileResponse(os.path.join(dist_path, "index.html"))
