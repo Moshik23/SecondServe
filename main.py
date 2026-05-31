@@ -1,7 +1,7 @@
 ﻿# ================================================================================
 # PRODUCTION BACKEND SOURCE CODE: MAIN.PY
 # TARGET LOCATION: REPOSITORY ROOT PATH
-# PROJECT TARGET: SECONDSERVE SURPLUS RECOVERY ENGINE (INTEGRATED LIFECYCLE)
+# PROJECT TARGET: SECONDSERVE SURPLUS RECOVERY ENGINE (COMPLETE CRUD MANAGEMENT)
 # COMPLIANCE STANDARD: RULE5FIST MANDATORY FULL RECODE DELIVERABLE
 # ================================================================================
 
@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 app = FastAPI(
     title="SecondServe Core API",
     description="Cloud-Native Surplus Recovery Backend with SGT Timezone Expiry Substrate",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -64,7 +64,6 @@ def execute_database_surplus_sweep():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Execute the lifecycle reset query across active products
         sweep_query = "UPDATE Products SET QuantityAvailable = 0 WHERE QuantityAvailable > 0"
         cursor.execute(sweep_query)
         affected_rows = cursor.rowcount
@@ -82,30 +81,23 @@ def execute_database_surplus_sweep():
             conn.close()
 
 async def production_expiry_timer_loop():
-    """Autonomously tracks exact SGT Timezone to execute scrubs strictly at 14:30 & 20:30."""
+    """Autonomously executes background database scrubs every 12 hours (Twice Daily SGT Peaks)."""
     sgt_timezone = ZoneInfo("Asia/Singapore")
-    
     while True:
         now = datetime.now(sgt_timezone)
-        
-        # Define exact targets for the current calendar day
         target_afternoon = now.replace(hour=14, minute=30, second=0, microsecond=0)
         target_evening = now.replace(hour=20, minute=30, second=0, microsecond=0)
         
-        # Calculate next upcoming pulse window
         if now < target_afternoon:
             next_target = target_afternoon
         elif now < target_evening:
             next_target = target_evening
         else:
-            # If past 8:30 PM, next target is 2:30 PM tomorrow
             next_target = target_afternoon + timedelta(days=1)
             
         sleep_seconds = (next_target - now).total_seconds()
         logging.info(f"EXPIRY ENGINE TIMER: Hibernating for {sleep_seconds} seconds until EXACTLY {next_target.strftime('%Y-%m-%d %H:%M:%S')} SGT.")
-        
         await asyncio.sleep(sleep_seconds)
-        
         try:
             execute_database_surplus_sweep()
         except Exception:
@@ -113,14 +105,12 @@ async def production_expiry_timer_loop():
 
 @app.on_event("startup")
 async def initialize_container_background_jobs():
-    """Mounts the persistent timezone engine thread directly to the container runtime state."""
     asyncio.create_task(production_expiry_timer_loop())
 
 # --------------------------------------------------------------------------------
 # PROOF OF CONCEPT (PoC) PRESENTATION DAY SIMULATION ENGINE
 # --------------------------------------------------------------------------------
 async def run_mock_pulse_countdown():
-    """Asynchronously tracks a shortened 60-second countdown before executing pulse logic."""
     logging.info("PoC SIMULATION: 60-second countdown sequence initiated.")
     await asyncio.sleep(60)
     logging.info("PoC SIMULATION: 60 seconds elapsed. Simulating 2:30 PM Pulse Event Automation...")
@@ -131,7 +121,6 @@ async def run_mock_pulse_countdown():
 
 @app.post("/api/v1/diagnostics/pulse-simulate", status_code=status.HTTP_202_ACCEPTED)
 def trigger_mock_pulse_automation(background_tasks: BackgroundTasks):
-    """Grading Rubric Hook: Spawns the isolated 60s countdown simulation thread hand-free."""
     background_tasks.add_task(run_mock_pulse_countdown)
     return {
         "status": "simulation_initiated",
@@ -140,21 +129,12 @@ def trigger_mock_pulse_automation(background_tasks: BackgroundTasks):
     }
 
 # --------------------------------------------------------------------------------
-# CORE BACKEND API ROUTES
+# ADVANCED DATABASE MANAGEMENT AND DIRECT CRUD API ROUTES
 # --------------------------------------------------------------------------------
-@app.get("/api/v1/diagnostics/database")
-def db_health_check():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        conn.close()
-        return {"database_status": "connected", "message": "Successfully authenticated with db-secondserve"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database connectivity check failed: {str(e)}")
 
 @app.get("/api/v1/products")
 def get_active_products():
+    """CHECK ACTIVE ITEMS: Retrieves listings where Quantity > 0."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -179,8 +159,35 @@ def get_active_products():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/v1/management/products")
+def get_all_inventory_records():
+    """CHECK ALL ITEMS: Diagnostic endpoint to audit the entire database table regardless of availability status."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.ProductID, p.ProductName, p.Category, p.OriginalPrice, p.CurrentDiscountPrice, p.QuantityAvailable
+            FROM Products p
+        """)
+        rows = cursor.fetchall()
+        inventory = []
+        for row in rows:
+            inventory.append({
+                "ProductID": row.ProductID,
+                "ProductName": row.ProductName,
+                "Category": row.Category,
+                "OriginalPrice": float(row.OriginalPrice),
+                "DiscountPrice": float(row.CurrentDiscountPrice),
+                "Quantity": row.QuantityAvailable
+            })
+        conn.close()
+        return {"status": "success", "data": inventory}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/products", status_code=status.HTTP_201_CREATED)
 def create_surplus_listing(payload: ProductCreateSchema):
+    """INSERT ITEM: Injects a new surplus food record directly into the Azure SQL data architecture."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -191,9 +198,40 @@ def create_surplus_listing(payload: ProductCreateSchema):
         cursor.execute(insert_query, payload.vendor_id, payload.product_name, payload.category, payload.original_price, payload.discount_price, payload.quantity_available, payload.image_url)
         conn.commit()
         conn.close()
-        return {"status": "success", "message": "Surplus product listed successfully."}
+        return {"status": "success", "message": "Surplus product record successfully injected into SecondServe Shelf"}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@app.delete("/api/v1/management/products/{product_id}")
+def delete_inventory_record(product_id: int):
+    """DELETE ITEM: Forcefully purges a specific inventory row target entirely from the database engine."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verify row presence before executing transaction deletion
+        cursor.execute("SELECT ProductID FROM Products WHERE ProductID = ?", product_id)
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail=f"Target execution dropped: Product ID {product_id} does not exist.")
+            
+        cursor.execute("DELETE FROM Products WHERE ProductID = ?", product_id)
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": f"Product ID {product_id} successfully purged from database storage."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/diagnostics/database")
+def db_health_check():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        conn.close()
+        return {"database_status": "connected", "message": "Successfully authenticated with db-secondserve"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/v1/diagnostics/seed")
 def seed_database_native():
