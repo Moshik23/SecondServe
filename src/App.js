@@ -4,7 +4,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("customer");
   const [surplusItems, setSurplusItems] = useState([]);
   const [systemMessage, setSystemMessage] = useState("");
-  
+
   // Vendor Intake Form State
   const [vendorId, setVendorId] = useState("1");
   const [productName, setProductName] = useState("");
@@ -13,8 +13,8 @@ export default function App() {
   const [discountPrice, setDiscountPrice] = useState("");
   const [quantity, setQuantity] = useState("");
 
-  // FIXED: Re-aligned API base routing domain context to target the new live Azure Container App environment substrate
-  const API_BASE_URL = "https://aca-secondserve-backend.livelybay-f6fd5e2b.southeastasia.azurecontainerapps.io/api/v1/products";
+  // VULNERABILITY RESOLVED: Dynamic relative routing ensures FQDN agnostic API calls
+  const API_BASE_URL = "/api/v1/products";
 
   useEffect(() => {
     if (activeTab === "customer") {
@@ -37,7 +37,7 @@ export default function App() {
   const handleVendorSubmit = async (e) => {
     e.preventDefault();
     setSystemMessage("Transmitting to Azure SQL...");
-    
+
     const payload = {
       vendor_id: parseInt(vendorId),
       product_name: productName,
@@ -54,7 +54,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      
+
       if (response.status === 201) {
         setSystemMessage("SUCCESS: Surplus listed on SecondServe Shelf!");
         setProductName("");
@@ -97,7 +97,7 @@ export default function App() {
         <button style={styles.btn(activeTab === "customer")} onClick={() => setActiveTab("customer")}>NEAR ME DEALS</button>
         <button style={styles.btn(activeTab === "vendor")} onClick={() => setActiveTab("vendor")}>VENDOR INTAKE</button>
       </div>
-      
+
       <div style={styles.content}>
         {activeTab === "customer" ? (
           <div>
