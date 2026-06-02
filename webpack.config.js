@@ -1,6 +1,7 @@
 ﻿const webpack = require('webpack');
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: './src/index.js',
@@ -31,6 +32,14 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, 'public/index.html'),
       filename: 'index.html'
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'public/manifest.json', to: 'manifest.json' },
+        { from: 'public/service-worker.js', to: 'service-worker.js' },
+        { from: 'public/icon-192.png', to: 'icon-192.png' },
+        { from: 'public/icon-512.png', to: 'icon-512.png' }
+      ]
     }),
     new webpack.DefinePlugin({
       'process.env': JSON.stringify({})
