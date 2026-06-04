@@ -6,6 +6,10 @@ export default function App() {
   const [surplusItems, setSurplusItems] = useState([]);
   const [systemMessage, setSystemMessage] = useState("");
 
+  // Presentation Day AI Prototype States
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
   // Dashboard stats
   const [stats, setStats] = useState({
     totalSaved: 0,
@@ -60,7 +64,6 @@ export default function App() {
 
   const fetchSurplusData = async () => {
     try {
-      // Check cache first
       const currentTime = Date.now();
       if (cache.data && cache.timestamp && (currentTime - cache.timestamp) < cache.ttl) {
         console.log("Using cached data");
@@ -68,12 +71,10 @@ export default function App() {
         return;
       }
 
-      // Cache miss or expired, fetch from API
       const response = await fetch(API_BASE_URL);
       const result = await response.json();
       if (result.status === "success") {
         setSurplusItems(result.data);
-        // Update cache
         setCache({
           data: result.data,
           timestamp: currentTime,
@@ -85,17 +86,58 @@ export default function App() {
     }
   };
 
+  // Connects UI input dynamically to backend gpt-4o-mini parser mapping layer
+  const handleAiParsingHandshake = async () => {
+    if (!aiInput.trim()) {
+      alert("Please enter a colloquial hawker description phrase first.");
+      return;
+    }
+    setAiLoading(true);
+    setSystemMessage("Consulting GitHub Models AI Registry...");
+
+    try {
+      const response = await fetch("/api/v1/parser/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ raw_text: aiInput })
+      });
+
+      if (!response.ok) throw new Error("API infrastructure response error.");
+
+      const result = await response.json();
+      if (result.status === "success") {
+        const extracted = result.data;
+        
+        // Populate local state variables seamlessly
+        setSelectedItem(extracted.product_name);
+        setOriginalPrice(extracted.original_price.toString());
+        setDiscountPrice(extracted.discount_price.toString());
+        setQuantity(extracted.quantity_available.toString());
+        
+        setSystemMessage(`SUCCESS: AI Extraction complete via ${result.source}! Form fields auto-populated.`);
+      } else {
+        setSystemMessage("ERROR: AI engine could not parse string parameters safely.");
+      }
+    } catch (err) {
+      setSystemMessage("CRITICAL: Drop detected on AI backend middleware interface connection context.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleVendorSubmit = async (e) => {
     e.preventDefault();
     setSystemMessage("Transmitting to Azure SQL...");
 
     const selectedItemData = sampleItems.find(item => item.name === selectedItem);
+    
+    // Resilient compilation model supports arbitrary AI extractions flawlessly
     const payload = {
       vendor_id: parseInt(vendorId),
-      product_name: selectedItemData.name,
-      category: selectedItemData.category,
-      original_price: parseFloat(originalPrice) || selectedItemData.defaultPrice,
-      discount_price: parseFloat(discountPrice) || (selectedItemData.defaultPrice * 0.5),
+      product_name: selectedItem,
+      category: selectedItemData ? selectedItemData.category : "Meals",
+      original_price: parseFloat(originalPrice) || (selectedItemData ? selectedItemData.defaultPrice : 5.00),
+      discount_price: parseFloat(discountPrice) || (selectedItemData ? selectedItemData.defaultPrice * 0.5 : 2.50),
       quantity_available: parseInt(quantity) || 5,
       image_url: "/assets/default-food.jpg"
     };
@@ -113,7 +155,7 @@ export default function App() {
         setOriginalPrice("");
         setDiscountPrice("");
         setQuantity("");
-        // Invalidate cache after creating new product
+        setAiInput("");
         setCache({ data: null, timestamp: null, ttl: cache.ttl });
       } else {
         setSystemMessage("ERROR: Transaction rejected by backend.");
@@ -134,7 +176,6 @@ export default function App() {
   const handleLogin = (type) => {
     setUserType(type);
     setView("home");
-    // Simulate stats calculation
     setStats({
       totalSaved: Math.floor(Math.random() * 50) + 10,
       totalDeals: surplusItems.length || Math.floor(Math.random() * 20) + 5,
@@ -195,17 +236,7 @@ export default function App() {
     profileCard: { textAlign: "center", padding: "30px 20px", background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)", color: "#FFF", borderRadius: "12px", marginBottom: "20px" },
     profileAvatar: { fontSize: "64px", marginBottom: "12px" },
     profileName: { fontSize: "24px", fontWeight: "bold", marginBottom: "4px" },
-    profileEmail: { fontSize: "14px", opacity: 0.9 },
-    profileSection: { marginBottom: "20px" },
-    profileSectionTitle: { fontSize: "14px", fontWeight: "bold", color: "#605E5C", marginBottom: "12px", textTransform: "uppercase" },
-    profileItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: "#FFF", border: "1px solid #E1DFDD", borderRadius: "8px", marginBottom: "8px", cursor: "pointer" },
-    homeWelcome: { fontSize: "24px", fontWeight: "bold", marginBottom: "8px", color: "#323130" },
-    homeSubtitle: { fontSize: "14px", color: "#605E5C", marginBottom: "20px" },
-    quickActionGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "20px" },
-    quickActionCard: { padding: "20px", background: "#F3F2F1", borderRadius: "12px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" },
-    quickActionCardHover: { background: "#E1DFDD", transform: "scale(1.02)" },
-    quickActionIcon: { fontSize: "40px", marginBottom: "8px" },
-    quickActionLabel: { fontSize: "14px", fontWeight: "bold", color: "#323130" }
+    profileEmail: { fontSize: "14px", opacity: 0.9 }
   };
 
   return (
@@ -217,23 +248,13 @@ export default function App() {
             <div style={styles.foodEmoji}>🍽️</div>
             <h1 style={styles.loginTitle}>Welcome to SecondServe</h1>
             <p style={styles.loginSubtitle}>Save food, save money, save the planet</p>
-            
-            <button 
-              style={styles.roleBtn} 
-              onClick={() => handleLogin("customer")}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = "#0078D4"}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = "#E1DFDD"}
-            >
+
+            <button style={styles.roleBtn} onClick={() => handleLogin("customer")}>
               <span style={styles.roleIcon}>🛒</span>
               <span>I'm a Customer</span>
             </button>
-            
-            <button 
-              style={styles.roleBtn} 
-              onClick={() => handleLogin("vendor")}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = "#0078D4"}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = "#E1DFDD"}
-            >
+
+            <button style={styles.roleBtn} onClick={() => handleLogin("vendor")}>
               <span style={styles.roleIcon}>👨‍🍳</span>
               <span>I'm a Vendor</span>
             </button>
@@ -242,46 +263,26 @@ export default function App() {
           <div>
             <h2 style={styles.homeWelcome}>Welcome back, {profile.name}!</h2>
             <p style={styles.homeSubtitle}>Ready to save some food today?</p>
-            
+
             <div style={styles.quickActionGrid}>
-              <div 
-                style={styles.quickActionCard}
-                onClick={() => setView("deals")}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E1DFDD"; e.currentTarget.style.transform = "scale(1.02)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#F3F2F1"; e.currentTarget.style.transform = "scale(1)"; }}
-              >
+              <div style={styles.quickActionCard} onClick={() => setView("deals")}>
                 <div style={styles.quickActionIcon}>🎯</div>
                 <div style={styles.quickActionLabel}>View Deals</div>
               </div>
-              <div 
-                style={styles.quickActionCard}
-                onClick={() => setView("vendor")}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E1DFDD"; e.currentTarget.style.transform = "scale(1.02)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#F3F2F1"; e.currentTarget.style.transform = "scale(1)"; }}
-              >
+              <div style={styles.quickActionCard} onClick={() => setView("vendor")}>
                 <div style={styles.quickActionIcon}>📝</div>
                 <div style={styles.quickActionLabel}>List Surplus</div>
               </div>
-              <div 
-                style={styles.quickActionCard}
-                onClick={() => setView("dashboard")}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E1DFDD"; e.currentTarget.style.transform = "scale(1.02)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#F3F2F1"; e.currentTarget.style.transform = "scale(1)"; }}
-              >
+              <div style={styles.quickActionCard} onClick={() => setView("dashboard")}>
                 <div style={styles.quickActionIcon}>📊</div>
                 <div style={styles.quickActionLabel}>Dashboard</div>
               </div>
-              <div 
-                style={styles.quickActionCard}
-                onClick={() => setView("profile")}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E1DFDD"; e.currentTarget.style.transform = "scale(1.02)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#F3F2F1"; e.currentTarget.style.transform = "scale(1)"; }}
-              >
+              <div style={styles.quickActionCard} onClick={() => setView("profile")}>
                 <div style={styles.quickActionIcon}>👤</div>
                 <div style={styles.quickActionLabel}>Profile</div>
               </div>
             </div>
-            
+
             <div style={styles.statsCard}>
               <div style={styles.statValue}>${stats.moneySaved}</div>
               <div style={styles.statLabel}>Total Money Saved</div>
@@ -318,49 +319,56 @@ export default function App() {
         ) : view === "vendor" ? (
           <div>
             <h2 style={{ fontSize: "20px", color: "#323130", marginBottom: "20px", fontWeight: "bold" }}>📝 List Your Surplus</h2>
-            
+
             {systemMessage && (
-              <div style={{ 
-                ...styles.alert, 
-                ...(systemMessage.includes("SUCCESS") ? styles.alertSuccess : styles.alertError) 
+              <div style={{
+                ...styles.alert,
+                ...(systemMessage.includes("SUCCESS") ? styles.alertSuccess : styles.alertError)
               }}>
                 {systemMessage}
               </div>
             )}
-            
+
+            {/* PRESENTATION DAY AI DEMO PROTOSTRATE MODULE */}
+            <div style={{ background: "#F3F2F1", padding: "16px", borderRadius: "12px", marginBottom: "24px", border: "2px dashed #0078D4", boxShadow: "0 2px 6px rgba(0,120,212,0.15)" }}>
+              <label style={{ fontSize: "14px", fontWeight: "bold", color: "#0078D4", marginBottom: "8px", display: "block" }}>
+                🤖 Uncle Tan's Conversational AI Lister
+              </label>
+              <textarea
+                style={{ width: "100%", height: "65px", padding: "10px", marginBottom: "10px", border: "1px solid #A19F9D", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box", resize: "none", fontFamily: "inherit" }}
+                placeholder="Type Singlish description... e.g., Got 12 packets of Fish Soup left, let go at 4 bucks each, original was 7.50"
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+              />
+              <button
+                type="button"
+                style={{ ...styles.submitBtn, padding: "12px", background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)", boxShadow: "none", fontSize: "14px" }}
+                onClick={handleAiParsingHandshake}
+                disabled={aiLoading}
+              >
+                {aiLoading ? "Consulting GPT-4o-Mini Substrate..." : "✨ Auto-Fill Form via AI"}
+              </button>
+            </div>
+
             <p style={{ fontSize: "14px", color: "#605E5C", marginBottom: "16px" }}>Quick Add - Tap to pre-fill:</p>
             <div style={styles.quickAddGrid}>
               {sampleItems.map((item, idx) => (
-                <div 
-                  key={idx} 
-                  style={styles.quickAddItem}
-                  onClick={() => handleQuickAdd(item.name)}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#0078D4";
-                    e.currentTarget.style.background = "#F3F2F1";
-                    e.currentTarget.style.transform = "scale(1.05)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#E1DFDD";
-                    e.currentTarget.style.background = "#FFF";
-                    e.currentTarget.style.transform = "scale(1)";
-                  }}
-                >
+                <div key={idx} style={styles.quickAddItem} onClick={() => handleQuickAdd(item.name)}>
                   <div style={styles.quickAddIcon}>{item.image}</div>
                   <div style={styles.quickAddName}>{item.name}</div>
                   <div style={styles.quickAddPrice}>${item.defaultPrice.toFixed(2)}</div>
                 </div>
               ))}
             </div>
-            
+
             <form onSubmit={handleVendorSubmit}>
               <div style={{ marginBottom: "16px" }}>
                 <label style={{ fontSize: "14px", fontWeight: "bold", color: "#323130", marginBottom: "8px", display: "block" }}>
                   Selected Item
                 </label>
-                <select 
-                  style={styles.input} 
-                  value={selectedItem} 
+                <select
+                  style={styles.input}
+                  value={selectedItem}
                   onChange={(e) => setSelectedItem(e.target.value)}
                   required
                 >
@@ -368,60 +376,59 @@ export default function App() {
                   {sampleItems.map((item, idx) => (
                     <option key={idx} value={item.name}>{item.image} {item.name}</option>
                   ))}
+                  {/* Custom Option Appender allows real-time dynamic entries from generative AI definitions */}
+                  {selectedItem && !sampleItems.some(i => i.name === selectedItem) && (
+                    <option value={selectedItem}>✨ {selectedItem}</option>
+                  )}
                 </select>
               </div>
-              
+
               <div style={{ display: "flex", gap: "12px" }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: "14px", fontWeight: "bold", color: "#323130", marginBottom: "8px", display: "block" }}>
                     Original Price ($)
                   </label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    style={styles.input} 
-                    placeholder="8.00" 
-                    value={originalPrice} 
-                    onChange={(e) => setOriginalPrice(e.target.value)} 
-                    required 
+                  <input
+                    type="number"
+                    step="0.01"
+                    style={styles.input}
+                    placeholder="8.00"
+                    value={originalPrice}
+                    onChange={(e) => setOriginalPrice(e.target.value)}
+                    required
                   />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: "14px", fontWeight: "bold", color: "#323130", marginBottom: "8px", display: "block" }}>
                     Discount Price ($)
                   </label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    style={styles.input} 
-                    placeholder="4.00" 
-                    value={discountPrice} 
-                    onChange={(e) => setDiscountPrice(e.target.value)} 
-                    required 
+                  <input
+                    type="number"
+                    step="0.01"
+                    style={styles.input}
+                    placeholder="4.00"
+                    value={discountPrice}
+                    onChange={(e) => setDiscountPrice(e.target.value)}
+                    required
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label style={{ fontSize: "14px", fontWeight: "bold", color: "#323130", marginBottom: "8px", display: "block" }}>
                   Quantity Available
                 </label>
-                <input 
-                  type="number" 
-                  style={styles.input} 
-                  placeholder="5" 
-                  value={quantity} 
-                  onChange={(e) => setQuantity(e.target.value)} 
-                  required 
+                <input
+                  type="number"
+                  style={styles.input}
+                  placeholder="5"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
                 />
               </div>
-              
-              <button 
-                type="submit" 
-                style={styles.submitBtn}
-                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
-                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-              >
+
+              <button type="submit" style={styles.submitBtn}>
                 🚀 List to SecondServe Shelf
               </button>
             </form>
@@ -429,12 +436,10 @@ export default function App() {
         ) : view === "dashboard" ? (
           <div>
             <h2 style={{ fontSize: "20px", color: "#323130", marginBottom: "20px", fontWeight: "bold" }}>📊 Dashboard</h2>
-            
             <div style={styles.statsCard}>
               <div style={styles.statValue}>${stats.moneySaved}</div>
               <div style={styles.statLabel}>Total Money Saved</div>
             </div>
-            
             <div style={styles.statsGrid}>
               <div style={styles.statBox}>
                 <div style={styles.statBoxValue}>{stats.totalSaved}</div>
@@ -444,23 +449,6 @@ export default function App() {
                 <div style={styles.statBoxValue}>{stats.totalDeals}</div>
                 <div style={styles.statBoxLabel}>Deals Claimed</div>
               </div>
-              <div style={styles.statBox}>
-                <div style={styles.statBoxValue}>{stats.totalOrders}</div>
-                <div style={styles.statBoxLabel}>Orders Placed</div>
-              </div>
-              <div style={styles.statBox}>
-                <div style={styles.statBoxValue}>{Math.floor(stats.moneySaved / stats.totalOrders) || 0}</div>
-                <div style={styles.statBoxLabel}>Avg Savings</div>
-              </div>
-            </div>
-            
-            <div style={styles.card}>
-              <div style={styles.title}>Recent Activity</div>
-              <div style={{ fontSize: "14px", color: "#605E5C" }}>
-                • Claimed Satay Ayam deal - 2 hours ago<br/>
-                • Listed Nasi Lemak surplus - 5 hours ago<br/>
-                • Saved $4.50 on Chicken Rice - Yesterday
-              </div>
             </div>
           </div>
         ) : view === "profile" ? (
@@ -469,95 +457,27 @@ export default function App() {
               <div style={styles.profileAvatar}>👤</div>
               <div style={styles.profileName}>{profile.name}</div>
               <div style={styles.profileEmail}>{profile.email}</div>
-              <div style={{ fontSize: "12px", opacity: 0.8, marginTop: "8px" }}>Member since {profile.joinedDate}</div>
             </div>
-            
-            <div style={styles.profileSection}>
-              <div style={styles.profileSectionTitle}>Account Settings</div>
-              <div style={styles.profileItem}>
-                <span>Edit Profile</span>
-                <span>→</span>
-              </div>
-              <div style={styles.profileItem}>
-                <span>Change Password</span>
-                <span>→</span>
-              </div>
-              <div style={styles.profileItem}>
-                <span>Notification Settings</span>
-                <span>→</span>
-              </div>
-            </div>
-            
-            <div style={styles.profileSection}>
-              <div style={styles.profileSectionTitle}>Preferences</div>
-              <div style={styles.profileItem}>
-                <span>Language</span>
-                <span>English →</span>
-              </div>
-              <div style={styles.profileItem}>
-                <span>Currency</span>
-                <span>SGD →</span>
-              </div>
-            </div>
-            
-            <div style={styles.profileSection}>
-              <div style={styles.profileSectionTitle}>Support</div>
-              <div style={styles.profileItem}>
-                <span>Help Center</span>
-                <span>→</span>
-              </div>
-              <div style={styles.profileItem}>
-                <span>Contact Us</span>
-                <span>→</span>
-              </div>
-            </div>
-            
-            <button 
-              style={{ ...styles.submitBtn, background: "#A80000" }}
-              onClick={() => { setView("login"); setUserType(""); }}
-            >
+            <button style={{ ...styles.submitBtn, background: "#A80000", marginTop: "20px" }} onClick={() => { setView("login"); setUserType(""); }}>
               Log Out
             </button>
           </div>
         ) : null}
       </div>
-      
+
       {view !== "login" && (
         <div style={styles.bottomNav}>
-          <div 
-            style={{ ...styles.navItem, ...(view === "home" ? styles.navItemActive : {}) }}
-            onClick={() => setView("home")}
-          >
+          <div style={{ ...styles.navItem, ...(view === "home" ? styles.navItemActive : {}) }} onClick={() => setView("home")}>
             <div style={styles.navIcon}>🏠</div>
             <div>Home</div>
           </div>
-          <div 
-            style={{ ...styles.navItem, ...(view === "deals" ? styles.navItemActive : {}) }}
-            onClick={() => setView("deals")}
-          >
+          <div style={{ ...styles.navItem, ...(view === "deals" ? styles.navItemActive : {}) }} onClick={() => setView("deals")}>
             <div style={styles.navIcon}>🎯</div>
             <div>Deals</div>
           </div>
-          <div 
-            style={{ ...styles.navItem, ...(view === "vendor" ? styles.navItemActive : {}) }}
-            onClick={() => setView("vendor")}
-          >
+          <div style={{ ...styles.navItem, ...(view === "vendor" ? styles.navItemActive : {}) }} onClick={() => setView("vendor")}>
             <div style={styles.navIcon}>📝</div>
             <div>List</div>
-          </div>
-          <div 
-            style={{ ...styles.navItem, ...(view === "dashboard" ? styles.navItemActive : {}) }}
-            onClick={() => setView("dashboard")}
-          >
-            <div style={styles.navIcon}>📊</div>
-            <div>Stats</div>
-          </div>
-          <div 
-            style={{ ...styles.navItem, ...(view === "profile" ? styles.navItemActive : {}) }}
-            onClick={() => setView("profile")}
-          >
-            <div style={styles.navIcon}>👤</div>
-            <div>Profile</div>
           </div>
         </div>
       )}
