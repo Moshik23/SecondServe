@@ -178,7 +178,7 @@ export default function App() {
   };
 
   const styles = {
-    container: { maxWidth: "480px", margin: "0 auto", background: "#FFF", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
+    container: { maxWidth: "480px", margin: "0 auto", background: "#FFF", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflow: "hidden" },
     header: { background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)", color: "#FFF", padding: "20px", textAlign: "center", fontWeight: "bold", fontSize: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" },
     content: { padding: "20px", flex: 1, overflowY: "auto" },
     card: { border: "1px solid #E1DFDD", padding: "16px", borderRadius: "12px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
@@ -189,12 +189,12 @@ export default function App() {
     oldPrice: { textDecoration: "line-through", color: "#A19F9D", fontSize: "14px" },
     location: { color: "#605E5C", fontSize: "13px" },
     input: { width: "100%", padding: "14px", marginBottom: "16px", border: "2px solid #E1DFDD", borderRadius: "8px", fontSize: "15px", boxSizing: "border-box" },
-    submitBtn: { width: "100%", padding: "16px", background: "linear-gradient(135deg, #107C41 0%, #0B5A2F 100%)", color: "#FFF", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 8px rgba(16, 124, 65, 0.3)" },
+    submitBtn: { width: "100%", padding: "16px", background: "linear-gradient(135deg, #107C41 0%, #0B5A2F 100%)", color: "#FFF", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 8px rgba(16, 124, 65, 0.3)", boxSizing: "border-box" },
     alert: { padding: "14px", textAlign: "center", marginBottom: "16px", fontSize: "14px", fontWeight: "bold", borderRadius: "8px" },
     alertSuccess: { background: "#DFF6DD", color: "#107C41" },
     alertError: { background: "#FDE7E9", color: "#A80000" },
     loginCard: { textAlign: "center", padding: "40px 20px" },
-    roleBtn: { width: "100%", padding: "20px", marginBottom: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px" },
+    roleBtn: { width: "100%", padding: "20px", marginBottom: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", boxSizing: "border-box" },
     quickAddGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "20px" },
 quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", textAlign: "center", cursor: "pointer", background: "#FFF" },
     bottomNav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "480px", background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
@@ -407,7 +407,7 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
             <div>Stats</div>
           </div>
           <div style={{ ...styles.navItem, ...(view === "profile" ? styles.navItemActive : {}) }} onClick={() => setView("profile")}>
-            <div style={styles.navIcon}>�</div>
+            <div style={styles.navIcon}>👤</div>
             <div>Profile</div>
           </div>
         </div>
