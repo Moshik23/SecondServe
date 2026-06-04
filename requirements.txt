@@ -4,3 +4,4 @@ pyodbc==5.1.0
 pydantic==2.6.4
 cachetools==5.3.3
 tzdata==2024.1
+requests
