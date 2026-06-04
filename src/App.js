@@ -171,7 +171,7 @@ export default function App() {
     setUserType(type);
     setView("home");
     setProfile({
-      name: type === "customer" ? "John Doe" : "Jane Smith (Hawker Vendor)",
+      name: type === "customer" ? "John Doe" : "Jane Smith",
       email: type === "customer" ? "john.doe@outlook.com" : "vendor.tan@gmail.com",
       joinedDate: new Date().toLocaleDateString()
     });
@@ -180,7 +180,7 @@ export default function App() {
   const styles = {
     container: { maxWidth: "480px", margin: "0 auto", background: "#FFF", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflow: "hidden" },
     header: { background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)", color: "#FFF", padding: "20px", textAlign: "center", fontWeight: "bold", fontSize: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" },
-    content: { padding: "20px", flex: 1, overflowY: "hidden" },
+    content: { padding: "20px", flex: 1, overflowY: "auto", paddingBottom: "100px" },
     card: { border: "1px solid #E1DFDD", padding: "16px", borderRadius: "12px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
     tag: { background: "#DFF6DD", color: "#107C41", padding: "6px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", display: "inline-block", marginBottom: "10px" },
     title: { fontSize: "18px", fontWeight: "bold", marginBottom: "8px", color: "#323130" },
@@ -197,7 +197,7 @@ export default function App() {
     roleBtn: { width: "100%", padding: "20px", marginBottom: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", boxSizing: "border-box" },
     quickAddGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "20px" },
 quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", textAlign: "center", cursor: "pointer", background: "#FFF" },
-    bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: "480px", margin: "0 auto", background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
+    bottomNav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "480px", background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
     navItem: { display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", color: "#605E5C", fontSize: "11px" },
     navItemActive: { color: "#0078D4" },
     navIcon: { fontSize: "24px", marginBottom: "4px" },
