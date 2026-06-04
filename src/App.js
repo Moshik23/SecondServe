@@ -32,7 +32,7 @@ export default function App() {
   const [discountPrice, setDiscountPrice] = useState("");
   const [quantity, setQuantity] = useState("");
 
-  // Permanent Quick Add Grid Menu Items
+  // Complete, unaltered sample food items array for the quick add grid
   const sampleItems = [
     { name: "Satay Ayam", category: "Meals", defaultPrice: 8.00, image: "🍢" },
     { name: "Ice Kacang", category: "Desserts", defaultPrice: 3.50, image: "🍧" },
@@ -305,7 +305,8 @@ export default function App() {
 
             <p style={{ fontSize: "14px", color: "#605E5C", marginBottom: "16px" }}>Quick Add - Tap to pre-fill:</p>
             <div style={styles.quickAddGrid}>
-              {sampleItems.slice(0, 4).map((item, idx) => (
+              {/* Restored to display the full, unrestricted 10-item list array seamlessly */}
+              {sampleItems.map((item, idx) => (
                 <div key={idx} style={styles.quickAddItem} onClick={() => handleQuickAdd(item.name)}>
                   <div style={{ fontSize: "40px", marginBottom: "8px" }}>{item.image}</div>
                   <div style={{ fontSize: "14px", fontWeight: "bold" }}>{item.name}</div>
