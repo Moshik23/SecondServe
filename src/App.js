@@ -181,7 +181,7 @@ export default function App() {
     quickAddPrice: { fontSize: "12px", color: "#605E5C" },
     backButton: { padding: "12px 20px", background: "#F3F2F1", color: "#323130", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "bold", cursor: "pointer", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" },
     foodEmoji: { fontSize: "48px", marginBottom: "12px" },
-    bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
+    bottomNav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "480px", background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
     navItem: { display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", color: "#605E5C", transition: "color 0.2s", fontSize: "11px" },
     navItemActive: { color: "#0078D4" },
     navIcon: { fontSize: "24px", marginBottom: "4px" },
@@ -253,15 +253,17 @@ export default function App() {
                 <div style={styles.quickActionIcon}>🎯</div>
                 <div style={styles.quickActionLabel}>View Deals</div>
               </div>
-              <div 
-                style={styles.quickActionCard}
-                onClick={() => setView("vendor")}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E1DFDD"; e.currentTarget.style.transform = "scale(1.02)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#F3F2F1"; e.currentTarget.style.transform = "scale(1)"; }}
-              >
-                <div style={styles.quickActionIcon}>📝</div>
-                <div style={styles.quickActionLabel}>List Surplus</div>
-              </div>
+              {userType === "vendor" && (
+                <div 
+                  style={styles.quickActionCard}
+                  onClick={() => setView("vendor")}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#E1DFDD"; e.currentTarget.style.transform = "scale(1.02)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#F3F2F1"; e.currentTarget.style.transform = "scale(1)"; }}
+                >
+                  <div style={styles.quickActionIcon}>📝</div>
+                  <div style={styles.quickActionLabel}>List Surplus</div>
+                </div>
+              )}
               <div 
                 style={styles.quickActionCard}
                 onClick={() => setView("dashboard")}
@@ -538,13 +540,15 @@ export default function App() {
             <div style={styles.navIcon}>🎯</div>
             <div>Deals</div>
           </div>
-          <div 
-            style={{ ...styles.navItem, ...(view === "vendor" ? styles.navItemActive : {}) }}
-            onClick={() => setView("vendor")}
-          >
-            <div style={styles.navIcon}>📝</div>
-            <div>List</div>
-          </div>
+          {userType === "vendor" && (
+            <div 
+              style={{ ...styles.navItem, ...(view === "vendor" ? styles.navItemActive : {}) }}
+              onClick={() => setView("vendor")}
+            >
+              <div style={styles.navIcon}>📝</div>
+              <div>List</div>
+            </div>
+          )}
           <div 
             style={{ ...styles.navItem, ...(view === "dashboard" ? styles.navItemActive : {}) }}
             onClick={() => setView("dashboard")}
