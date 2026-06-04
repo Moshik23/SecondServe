@@ -198,7 +198,7 @@ export default function App() {
     roleBtn: { width: "100%", padding: "20px", marginBottom: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", boxSizing: "border-box" },
     quickAddGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "20px" },
 quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12px", textAlign: "center", cursor: "pointer", background: "#FFF" },
-    bottomNav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "480px", background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
+    bottomNav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "480px", background: "#FFF", borderTop: "1px solid #E1DFDD", display: "flex", justifyContent: "space-around", padding: "12px 0", boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" },
     navItem: { display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", color: "#605E5C", fontSize: "11px" },
     navItemActive: { color: "#0078D4" },
     navIcon: { fontSize: "24px", marginBottom: "4px" },
@@ -231,7 +231,7 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
         ) : view === "home" ? (
           <div>
             <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px" }}>Welcome back, {profile.name}!</h2>
-            <p style={{ color: "#605E5C", marginBottom: "20px" }}>{profile.role}</p>
+            <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px" }}>{profile.role}</h2>
             <p style={{ color: "#605E5C", marginBottom: "20px" }}>Ready to rescue food or list surplus?</p>
 
             <div style={styles.quickActionGrid}>
