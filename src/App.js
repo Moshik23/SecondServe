@@ -172,7 +172,7 @@ export default function App() {
     setView("home");
     setProfile({
       name: type === "customer" ? "John Doe" : "Jane Smith",
-      role: type === "customer" ? "Customer" : "Hawker Vendor",
+      role: type === "customer" ? "(Customer)" : "(Hawker Vendor)",
       email: type === "customer" ? "john.doe@outlook.com" : "vendor.tan@gmail.com",
       joinedDate: new Date().toLocaleDateString()
     });
