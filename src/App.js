@@ -159,6 +159,28 @@ export default function App() {
     }
   };
 
+  const handleDeleteItem = async (productId) => {
+    if (!confirm("Are you sure you want to delete this item?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/management/products/${productId}`, {
+        method: "DELETE"
+      });
+
+      if (response.ok) {
+        setSystemMessage("SUCCESS: Item deleted successfully!");
+        setCache({ data: null, timestamp: null, ttl: cache.ttl });
+        fetchSurplusData();
+      } else {
+        setSystemMessage("ERROR: Failed to delete item.");
+      }
+    } catch (error) {
+      setSystemMessage("CRITICAL: Network execution failure.");
+    }
+  };
+
   const handleQuickAdd = (itemName) => {
     const item = sampleItems.find(i => i.name === itemName);
     setSelectedItem(itemName);
@@ -278,6 +300,24 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
                       <span style={styles.oldPrice}>Original ${originalPrice.toFixed(2)}</span>
                     </div>
                     <div style={{ color: "#605E5C", fontSize: "13px" }}>📍 {item.Location || "Singapore Hawker Center"}</div>
+                    {userType === "vendor" && (
+                      <button
+                        onClick={() => handleDeleteItem(item.ProductID || item.product_id)}
+                        style={{
+                          marginTop: "12px",
+                          padding: "8px 16px",
+                          background: "#D13438",
+                          color: "#FFF",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "bold"
+                        }}
+                      >
+                        Delete Item
+                      </button>
+                    )}
                   </div>
                 );
               })
