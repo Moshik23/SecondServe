@@ -265,14 +265,17 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
             {surplusItems && surplusItems.length > 0 ? (
               surplusItems.map((item, idx) => {
                 const sampleItem = sampleItems.find(si => si.name === (item.ProductName || item.product_name));
+                const defaultPrice = sampleItem ? sampleItem.defaultPrice : 5.00;
+                const discountPrice = item.DiscountPrice || item.discount_price || (defaultPrice * 0.5);
+                const originalPrice = item.OriginalPrice || item.original_price || defaultPrice;
                 return (
                   <div key={idx} style={styles.card}>
                     <div style={{ fontSize: "48px", marginBottom: "12px", textAlign: "center" }}>{sampleItem ? sampleItem.image : "🍱"}</div>
                     <span style={styles.tag}>{item.Quantity || item.quantity_available || 0} portions left</span>
                     <div style={styles.title}>{item.ProductName || item.product_name}</div>
                     <div style={styles.priceRow}>
-                      <span style={styles.newPrice}>${(item.DiscountPrice || item.discount_price || 0).toFixed(2)}</span>
-                      <span style={styles.oldPrice}>Original ${(item.OriginalPrice || item.original_price || 0).toFixed(2)}</span>
+                      <span style={styles.newPrice}>${discountPrice.toFixed(2)}</span>
+                      <span style={styles.oldPrice}>Original ${originalPrice.toFixed(2)}</span>
                     </div>
                     <div style={{ color: "#605E5C", fontSize: "13px" }}>📍 {item.Location || "Singapore Hawker Center"}</div>
                   </div>
