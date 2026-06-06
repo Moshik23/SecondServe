@@ -6,6 +6,8 @@ export default function App() {
   const [surplusItems, setSurplusItems] = useState([]);
   const [systemMessage, setSystemMessage] = useState("");
   const [cart, setCart] = useState([]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
 
   // Presentation Day AI Prototype States
   const [aiInput, setAiInput] = useState("");
@@ -231,6 +233,31 @@ export default function App() {
     });
   };
 
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallButton(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
   const styles = {
     container: { maxWidth: "480px", margin: "0 auto", background: "#FFF", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflow: "hidden" },
     header: { background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)", color: "#FFF", padding: "20px", textAlign: "center", fontWeight: "bold", fontSize: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", width: "480px", margin: "0 auto" },
@@ -283,6 +310,26 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
           </div>
         ) : view === "home" ? (
           <div>
+            {showInstallButton && (
+              <button
+                onClick={handleInstallApp}
+                style={{
+                  padding: "12px 20px",
+                  background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)",
+                  color: "#FFF",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  marginBottom: "20px",
+                  width: "100%",
+                  boxShadow: "0 4px 8px rgba(0, 120, 212, 0.3)"
+                }}
+              >
+                📱 Install App
+              </button>
+            )}
             <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px" }}>Welcome back, {profile.name}!</h2>
             <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px" }}>{profile.role}</h2>
             <p style={{ color: "#605E5C", marginBottom: "20px" }}>Ready to rescue food or list surplus?</p>
