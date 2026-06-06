@@ -1,10 +1,11 @@
 ﻿import React, { useState, useEffect } from "react";
 
 export default function App() {
-  const [view, setView] = useState("login"); // login, home, deals, vendor, dashboard, profile
+  const [view, setView] = useState("login"); // login, home, deals, vendor, dashboard, profile, cart
   const [userType, setUserType] = useState(""); // customer, vendor
   const [surplusItems, setSurplusItems] = useState([]);
   const [systemMessage, setSystemMessage] = useState("");
+  const [cart, setCart] = useState([]);
 
   // Presentation Day AI Prototype States
   const [aiInput, setAiInput] = useState("");
@@ -181,6 +182,36 @@ export default function App() {
     }
   };
 
+  const handleAddToCart = (item) => {
+    const sampleItem = sampleItems.find(si => si.name === (item.ProductName || item.product_name));
+    const defaultPrice = sampleItem ? sampleItem.defaultPrice : 5.00;
+    const discountPrice = item.DiscountPrice || item.discount_price || (defaultPrice * 0.5);
+    const originalPrice = item.OriginalPrice || item.original_price || defaultPrice;
+
+    const cartItem = {
+      ...item,
+      discountPrice: discountPrice,
+      originalPrice: originalPrice,
+      quantity: 1
+    };
+
+    setCart([...cart, cartItem]);
+    setSystemMessage("SUCCESS: Item added to cart!");
+  };
+
+  const handleRemoveFromCart = (index) => {
+    const newCart = [...cart];
+    newCart.splice(index, 1);
+    setCart(newCart);
+  };
+
+  const handleClearCart = () => {
+    if (confirm("Are you sure you want to clear your cart?")) {
+      setCart([]);
+      setSystemMessage("SUCCESS: Cart cleared!");
+    }
+  };
+
   const handleQuickAdd = (itemName) => {
     const item = sampleItems.find(i => i.name === itemName);
     setSelectedItem(itemName);
@@ -318,6 +349,24 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
                         Delete Item
                       </button>
                     )}
+                    {userType === "customer" && (
+                      <button
+                        onClick={() => handleAddToCart(item)}
+                        style={{
+                          marginTop: "12px",
+                          padding: "8px 16px",
+                          background: "#0078D4",
+                          color: "#FFF",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "bold"
+                        }}
+                      >
+                        Add to Cart
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -429,6 +478,90 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
               Log Out Secure Session
             </button>
           </div>
+        ) : view === "cart" ? (
+          <div>
+            <h2 style={{ fontSize: "20px", marginBottom: "20px", fontWeight: "bold" }}>🛒 Your Cart</h2>
+            {cart.length > 0 ? (
+              <>
+                {cart.map((item, idx) => {
+                  const sampleItem = sampleItems.find(si => si.name === (item.ProductName || item.product_name));
+                  return (
+                    <div key={idx} style={styles.card}>
+                      <div style={{ fontSize: "48px", marginBottom: "12px", textAlign: "center" }}>{sampleItem ? sampleItem.image : "🍱"}</div>
+                      <div style={styles.title}>{item.ProductName || item.product_name}</div>
+                      <div style={styles.priceRow}>
+                        <span style={styles.newPrice}>${item.discountPrice.toFixed(2)}</span>
+                        <span style={styles.oldPrice}>Original ${item.originalPrice.toFixed(2)}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFromCart(idx)}
+                        style={{
+                          marginTop: "12px",
+                          padding: "8px 16px",
+                          background: "#D13438",
+                          color: "#FFF",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "bold"
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  );
+                })}
+                <div style={styles.card}>
+                  <div style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>Order Summary</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <span>Total Items:</span>
+                    <span>{cart.length}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
+                    <span>Total Savings:</span>
+                    <span style={{ color: "#107C10", fontWeight: "bold" }}>
+                      ${cart.reduce((sum, item) => sum + (item.originalPrice - item.discountPrice), 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleClearCart}
+                    style={{
+                      padding: "12px",
+                      background: "#605E5C",
+                      color: "#FFF",
+                      border: "none",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      marginBottom: "12px",
+                      width: "100%"
+                    }}
+                  >
+                    Clear Cart
+                  </button>
+                  <button
+                    style={{
+                      padding: "12px",
+                      background: "linear-gradient(135deg, #107C10 0%, #0B5A0B 100%)",
+                      color: "#FFF",
+                      border: "none",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      width: "100%"
+                    }}
+                  >
+                    Checkout
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={styles.alert}>Your cart is empty. Add some deals!</div>
+            )}
+          </div>
         ) : null}
         
       </div>
@@ -441,10 +574,16 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
           <div style={{ ...styles.navItem, ...(view === "deals" ? styles.navItemActive : {}) }} onClick={() => setView("deals")}>
             <div style={styles.navIcon}>🎯</div> <div>Deals</div>
           </div>
-{userType === "vendor" && (
+          {userType === "vendor" && (
             <div style={{ ...styles.navItem, ...(view === "vendor" ? styles.navItemActive : {}) }} onClick={() => setView("vendor")}>
               <div style={styles.navIcon}>📝</div>
               <div>List</div>
+            </div>
+          )}
+          {userType === "customer" && (
+            <div style={{ ...styles.navItem, ...(view === "cart" ? styles.navItemActive : {}) }} onClick={() => setView("cart")}>
+              <div style={styles.navIcon}}>🛒</div>
+              <div>Cart</div>
             </div>
           )}
           <div style={{ ...styles.navItem, ...(view === "dashboard" ? styles.navItemActive : {}) }} onClick={() => setView("dashboard")}>
