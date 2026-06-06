@@ -582,7 +582,7 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
           )}
           {userType === "customer" && (
             <div style={{ ...styles.navItem, ...(view === "cart" ? styles.navItemActive : {}) }} onClick={() => setView("cart")}>
-              <div style={styles.navIcon}}>🛒</div>
+              <div style={styles.navIcon}>🛒</div>
               <div>Cart</div>
             </div>
           )}
