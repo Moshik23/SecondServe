@@ -331,16 +331,16 @@ def parse_hawker_text(payload: UnstructuredTextPayload):
 
         response_json = response.json()
         raw_output = response_json["choices"][0]["message"]["content"].strip()
-        
+
         # Strip code block decorators if returned by the inference engine
         if raw_output.startswith("```"):
             raw_output = re.sub(r"^```json\s*|```$", "", raw_output, flags=re.MULTILINE).strip()
 
         parsed_data = json.loads(raw_output)
-        
+
         # Inject explicit static web path required by ProductCreateSchema constraints
         parsed_data["image_url"] = "/assets/default-food.jpg"
-        
+
         return {"status": "success", "source": "github_models_gpt4o_mini", "data": parsed_data}
 
     except Exception as e:
@@ -352,7 +352,7 @@ def execute_resilient_fallback_parsing(text: str):
     """Fallback compiler parses unstructured data matching auto-populate schema requirements."""
     detected_product = "Chicken Rice"
     detected_category = "Meals"
-    
+
     if "biryani" in text or "mutton" in text:
         detected_product = "Mutton Biryani"
         detected_category = "Meals"
@@ -364,7 +364,7 @@ def execute_resilient_fallback_parsing(text: str):
         detected_category = "Soups"
 
     numbers = [float(n) for n in re.findall(r"\d+\.?\d*", text)]
-    
+
     qty = 5
     disc_p = 3.00
     orig_p = 6.00
@@ -375,7 +375,7 @@ def execute_resilient_fallback_parsing(text: str):
         disc_p = float(numbers[1])
     if len(numbers) >= 3:
         orig_p = float(numbers[2])
-        
+
     if orig_p < disc_p:
         orig_p, disc_p = disc_p, orig_p
 
@@ -407,4 +407,3 @@ else:
     def read_root(): return {"status": "online"}
 
 # SYSTEM ARCHITECTURE TRACE: COMPLETED ISOLATED STAGE DEVELOPMENT TESTING LOOP
-
