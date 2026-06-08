@@ -219,7 +219,7 @@ export default function App() {
  const [pulseCountdown, setPulseCountdown] = useState(null);
 
 const handlePulseSimulate = async () => {
-  setSystemMessage("Initiating Pulse Event... discounts will apply in 60 seconds.");
+  setSystemMessage("Initiating Pulse Event... discounts will apply in 15 seconds.");
   try {
     const response = await fetch("/api/v1/diagnostics/discount-simulate", {
       method: "POST",
@@ -228,7 +228,7 @@ const handlePulseSimulate = async () => {
     if (response.ok) {
       setSystemMessage("SUCCESS: Pulse countdown started!");
       
-      let secondsLeft = 60;
+      let secondsLeft = 15;
       setPulseCountdown(secondsLeft);
 
       const interval = setInterval(() => {

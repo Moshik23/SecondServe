@@ -117,17 +117,17 @@ async def initialize_container_background_jobs():
 # PROOF OF CONCEPT (PoC) PRESENTATION DAY SIMULATION ENGINE
 # --------------------------------------------------------------------------------
 async def run_mock_pulse_countdown():
-    logging.info("PoC SIMULATION: 60-second countdown sequence initiated.")
-    await asyncio.sleep(60)
-    logging.info("PoC SIMULATION: 60 seconds elapsed. Simulating 2:30 PM Pulse Event Automation...")
+    logging.info("PoC SIMULATION: 15-second countdown sequence initiated.")
+    await asyncio.sleep(15)
+    logging.info("PoC SIMULATION: 15 seconds elapsed. Simulating 2:30 PM Pulse Event Automation...")
     try:
         execute_database_surplus_sweep()
     except Exception:
         logging.error("PoC SIMULATION: Background execution loop failed.")
 
 async def run_discount_countdown():
-    logging.info("DISCOUNT SIMULATION: 60-second countdown initiated.")
-    await asyncio.sleep(60)
+    logging.info("DISCOUNT SIMULATION: 15-second countdown initiated.")
+    await asyncio.sleep(15)
     logging.info("DISCOUNT SIMULATION: Applying discounts now...")
     conn = None
     try:
@@ -154,7 +154,7 @@ def trigger_discount_simulation(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_discount_countdown)
     return {
         "status": "simulation_initiated",
-        "message": "Discount countdown started. Prices will drop 50% in 60 seconds."
+        "message": "Discount countdown started. Prices will drop 50% in 15 seconds."
     }
 
 @app.post("/api/v1/diagnostics/pulse-simulate", status_code=status.HTTP_202_ACCEPTED)
@@ -162,8 +162,8 @@ def trigger_mock_pulse_automation(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_mock_pulse_countdown)
     return {
         "status": "simulation_initiated",
-        "simulation_target_time_seconds": 60,
-        "message": "Pulse Event Automation countdown started. Database will sweep completely in 60 seconds."
+        "simulation_target_time_seconds": 15,
+        "message": "Pulse Event Automation countdown started. Database will sweep completely in 15 seconds."
     }
 
 # --------------------------------------------------------------------------------
