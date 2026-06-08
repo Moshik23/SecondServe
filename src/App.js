@@ -63,28 +63,28 @@ export default function App() {
     }
   }, [view]);
 
-  const fetchSurplusData = async () => {
-    try {
-      const currentTime = Date.now();
-      if (cache.data && cache.timestamp && (currentTime - cache.timestamp) < cache.ttl) {
-        setSurplusItems(cache.data);
-        return;
-      }
-
-      const response = await fetch(API_BASE_URL);
-      const result = await response.json();
-      if (result.status === "success") {
-        setSurplusItems(result.data);
-        setCache({
-          data: result.data,
-          timestamp: currentTime,
-          ttl: cache.ttl
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch cloud database.", error);
+ const fetchSurplusData = async (forceRefresh = false) => {
+  try {
+    const currentTime = Date.now();
+    if (!forceRefresh && cache.data && cache.timestamp && (currentTime - cache.timestamp) < cache.ttl) {
+      setSurplusItems(cache.data);
+      return;
     }
-  };
+
+    const response = await fetch(API_BASE_URL);
+    const result = await response.json();
+    if (result.status === "success") {
+      setSurplusItems(result.data);
+      setCache({
+        data: result.data,
+        timestamp: currentTime,
+        ttl: cache.ttl
+      });
+    }
+  } catch (error) {
+    console.error("Failed to fetch cloud database.", error);
+  }
+};
 
   const handleAiParsingHandshake = async () => {
     if (!aiInput.trim()) {
@@ -187,7 +187,7 @@ export default function App() {
   const handleAddToCart = (item) => {
     const sampleItem = sampleItems.find(si => si.name === (item.ProductName || item.product_name));
     const defaultPrice = sampleItem ? sampleItem.defaultPrice : 5.00;
-    const discountPrice = item.DiscountPrice || item.discount_price || (defaultPrice * 0.5);
+    const discountPrice = item.DiscountPrice || item.discount_price || originalPrice;
     const originalPrice = item.OriginalPrice || item.original_price || defaultPrice;
 
     const cartItem = {
@@ -214,6 +214,60 @@ export default function App() {
     }
   };
 
+ const [pulseCountdown, setPulseCountdown] = useState(null);
+
+const handlePulseSimulate = async () => {
+  setSystemMessage("Initiating Pulse Event... discounts will apply in 60 seconds.");
+  try {
+    const response = await fetch("/api/v1/diagnostics/discount-simulate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    if (response.ok) {
+      setSystemMessage("SUCCESS: Pulse countdown started!");
+      
+      let secondsLeft = 60;
+      setPulseCountdown(secondsLeft);
+
+      const interval = setInterval(() => {
+        secondsLeft -= 1;
+        setPulseCountdown(secondsLeft);
+
+        if (secondsLeft <= 0) {
+          clearInterval(interval);
+          setPulseCountdown(null);
+          setSystemMessage("SUCCESS: Pulse applied! Deals updated.");
+          setView("deals");
+          fetchSurplusData(true);
+        }
+      }, 1000);
+
+    } else {
+      setSystemMessage("ERROR: Pulse trigger failed.");
+    }
+  } catch (err) {
+    setSystemMessage("CRITICAL: Could not reach pulse endpoint.");
+  }
+};
+
+const handleDeleteAll = async () => {
+    if (!confirm("Are you sure you want to delete all items?")) return;
+    try {
+      const response = await fetch("/api/v1/management/products", {
+        method: "DELETE"
+      });
+      if (response.ok) {
+        setSystemMessage("SUCCESS: All items deleted!");
+        setCache({ data: null, timestamp: null, ttl: cache.ttl });
+        setSurplusItems([]);
+      } else {
+        setSystemMessage("ERROR: Failed to delete all items.");
+      }
+    } catch (error) {
+      setSystemMessage("CRITICAL: Network execution failure.");
+    }
+  };
+  
   const handleQuickAdd = (itemName) => {
     const item = sampleItems.find(i => i.name === itemName);
     setSelectedItem(itemName);
@@ -362,6 +416,25 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
         ) : view === "deals" ? (
           <div>
             <h2 style={{ fontSize: "20px", marginBottom: "20px", fontWeight: "bold" }}>🎯 Today's Live Surplus Deals</h2>
+{userType === "vendor" && (
+  <button
+    onClick={handleDeleteAll}
+    style={{
+      width: "100%",
+      padding: "12px",
+      background: "#A80000",
+      color: "#FFF",
+      border: "none",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "14px",
+      fontWeight: "bold",
+      marginBottom: "16px"
+    }}
+  >
+    🗑️ Delete All Items
+  </button>
+)}
             {surplusItems && surplusItems.length > 0 ? (
               surplusItems.map((item, idx) => {
                 const sampleItem = sampleItems.find(si => si.name === (item.ProductName || item.product_name));
@@ -430,6 +503,23 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
                 {systemMessage}
               </div>
             )}
+            {pulseCountdown !== null && (
+  <div style={{
+    background: "#FFF4CE",
+    border: "2px solid #D83B01",
+    borderRadius: "12px",
+    padding: "20px",
+    textAlign: "center",
+    marginBottom: "16px"
+  }}>
+    <div style={{ fontSize: "48px", fontWeight: "bold", color: "#D83B01" }}>
+      {pulseCountdown}s
+    </div>
+    <div style={{ fontSize: "14px", fontWeight: "bold", color: "#605E5C" }}>
+      ⚡ Pulse discount applying soon...
+    </div>
+  </div>
+)}
 
             <div style={{ background: "#F3F2F1", padding: "16px", borderRadius: "12px", marginBottom: "24px", border: "2px dashed #0078D4" }}>
               <label style={{ fontSize: "14px", fontWeight: "bold", color: "#0078D4", marginBottom: "8px", display: "block" }}>
@@ -489,6 +579,13 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
               </div>
 
               <button type="submit" style={styles.submitBtn}>🚀 List to SecondServe Shelf</button>
+              <button 
+                type="button" 
+                style={{ ...styles.submitBtn, background: "linear-gradient(135deg, #D83B01 0%, #A80000 100%)", marginTop: "12px" }} 
+                onClick={handlePulseSimulate}
+              >
+                ⚡ Trigger Pulse Discount Event
+              </button>
             </form>
           </div>
         ) : view === "dashboard" ? (

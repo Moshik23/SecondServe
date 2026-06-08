@@ -125,6 +125,38 @@ async def run_mock_pulse_countdown():
     except Exception:
         logging.error("PoC SIMULATION: Background execution loop failed.")
 
+async def run_discount_countdown():
+    logging.info("DISCOUNT SIMULATION: 60-second countdown initiated.")
+    await asyncio.sleep(60)
+    logging.info("DISCOUNT SIMULATION: Applying discounts now...")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE Products 
+            SET CurrentDiscountPrice = OriginalPrice * 0.50
+            WHERE QuantityAvailable > 0
+        """)
+        affected = cursor.rowcount
+        conn.commit()
+        logging.info(f"DISCOUNT SIMULATION: Applied 50% discount to {affected} products.")
+    except Exception as e:
+        logging.error(f"DISCOUNT SIMULATION error: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+@app.post("/api/v1/diagnostics/discount-simulate", status_code=status.HTTP_202_ACCEPTED)
+def trigger_discount_simulation(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_discount_countdown)
+    return {
+        "status": "simulation_initiated",
+        "message": "Discount countdown started. Prices will drop 50% in 60 seconds."
+    }
+
 @app.post("/api/v1/diagnostics/pulse-simulate", status_code=status.HTTP_202_ACCEPTED)
 def trigger_mock_pulse_automation(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_mock_pulse_countdown)
@@ -224,6 +256,20 @@ def delete_inventory_record(product_id: int):
         conn.commit()
         conn.close()
         return {"status": "success", "message": f"Product ID {product_id} successfully purged from database storage."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/v1/management/products")
+def delete_all_inventory_records():
+    """DELETE ALL ITEMS: Purges all inventory rows from the database."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM Products")
+        affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": f"All {affected} products deleted successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
