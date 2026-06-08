@@ -117,21 +117,53 @@ async def initialize_container_background_jobs():
 # PROOF OF CONCEPT (PoC) PRESENTATION DAY SIMULATION ENGINE
 # --------------------------------------------------------------------------------
 async def run_mock_pulse_countdown():
-    logging.info("PoC SIMULATION: 60-second countdown sequence initiated.")
-    await asyncio.sleep(60)
-    logging.info("PoC SIMULATION: 60 seconds elapsed. Simulating 2:30 PM Pulse Event Automation...")
+    logging.info("PoC SIMULATION: 15-second countdown sequence initiated.")
+    await asyncio.sleep(15)
+    logging.info("PoC SIMULATION: 15 seconds elapsed. Simulating 2:30 PM Pulse Event Automation...")
     try:
         execute_database_surplus_sweep()
     except Exception:
         logging.error("PoC SIMULATION: Background execution loop failed.")
+
+async def run_discount_countdown():
+    logging.info("DISCOUNT SIMULATION: 15-second countdown initiated.")
+    await asyncio.sleep(15)
+    logging.info("DISCOUNT SIMULATION: Applying discounts now...")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE Products 
+            SET CurrentDiscountPrice = OriginalPrice * 0.50
+            WHERE QuantityAvailable > 0
+        """)
+        affected = cursor.rowcount
+        conn.commit()
+        logging.info(f"DISCOUNT SIMULATION: Applied 50% discount to {affected} products.")
+    except Exception as e:
+        logging.error(f"DISCOUNT SIMULATION error: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+@app.post("/api/v1/diagnostics/discount-simulate", status_code=status.HTTP_202_ACCEPTED)
+def trigger_discount_simulation(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_discount_countdown)
+    return {
+        "status": "simulation_initiated",
+        "message": "Discount countdown started. Prices will drop 50% in 15 seconds."
+    }
 
 @app.post("/api/v1/diagnostics/pulse-simulate", status_code=status.HTTP_202_ACCEPTED)
 def trigger_mock_pulse_automation(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_mock_pulse_countdown)
     return {
         "status": "simulation_initiated",
-        "simulation_target_time_seconds": 60,
-        "message": "Pulse Event Automation countdown started. Database will sweep completely in 60 seconds."
+        "simulation_target_time_seconds": 15,
+        "message": "Pulse Event Automation countdown started. Database will sweep completely in 15 seconds."
     }
 
 # --------------------------------------------------------------------------------
@@ -161,6 +193,37 @@ def get_active_products():
             })
         conn.close()
         return {"status": "success", "data": products}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/products/nearby")
+def get_nearby_deals(location: str):
+    """NEARBY DEALS: Returns active products where stall location matches the search area."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.ProductID, p.ProductName, p.CurrentDiscountPrice, p.OriginalPrice,
+                   p.QuantityAvailable, v.StallLocation, v.VendorName
+            FROM Products p
+            JOIN Vendors v ON p.VendorID = v.VendorID
+            WHERE p.QuantityAvailable > 0
+            AND v.StallLocation LIKE ?
+        """, f"%{location}%")
+        rows = cursor.fetchall()
+        products = []
+        for row in rows:
+            products.append({
+                "ProductID": row.ProductID,
+                "ProductName": row.ProductName,
+                "DiscountPrice": float(row.CurrentDiscountPrice),
+                "OriginalPrice": float(row.OriginalPrice),
+                "Quantity": row.QuantityAvailable,
+                "Location": row.StallLocation,
+                "VendorName": row.VendorName
+            })
+        conn.close()
+        return {"status": "success", "location_query": location, "data": products, "total": len(products)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -224,6 +287,20 @@ def delete_inventory_record(product_id: int):
         conn.commit()
         conn.close()
         return {"status": "success", "message": f"Product ID {product_id} successfully purged from database storage."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/v1/management/products")
+def delete_all_inventory_records():
+    """DELETE ALL ITEMS: Purges all inventory rows from the database."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM Products")
+        affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": f"All {affected} products deleted successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
