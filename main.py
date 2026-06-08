@@ -196,6 +196,37 @@ def get_active_products():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/v1/products/nearby")
+def get_nearby_deals(location: str):
+    """NEARBY DEALS: Returns active products where stall location matches the search area."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.ProductID, p.ProductName, p.CurrentDiscountPrice, p.OriginalPrice,
+                   p.QuantityAvailable, v.StallLocation, v.VendorName
+            FROM Products p
+            JOIN Vendors v ON p.VendorID = v.VendorID
+            WHERE p.QuantityAvailable > 0
+            AND v.StallLocation LIKE ?
+        """, f"%{location}%")
+        rows = cursor.fetchall()
+        products = []
+        for row in rows:
+            products.append({
+                "ProductID": row.ProductID,
+                "ProductName": row.ProductName,
+                "DiscountPrice": float(row.CurrentDiscountPrice),
+                "OriginalPrice": float(row.OriginalPrice),
+                "Quantity": row.QuantityAvailable,
+                "Location": row.StallLocation,
+                "VendorName": row.VendorName
+            })
+        conn.close()
+        return {"status": "success", "location_query": location, "data": products, "total": len(products)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/v1/management/products")
 def get_all_inventory_records():
     """CHECK ALL ITEMS: Diagnostic endpoint to audit the entire database table regardless of availability status."""

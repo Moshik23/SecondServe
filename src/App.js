@@ -4,6 +4,8 @@ export default function App() {
   const [view, setView] = useState("login"); // login, home, deals, vendor, dashboard, profile, cart
   const [userType, setUserType] = useState(""); // customer, vendor
   const [surplusItems, setSurplusItems] = useState([]);
+  const [nearbyItems, setNearbyItems] = useState([]);
+  const [locationQuery, setLocationQuery] = useState("");
   const [systemMessage, setSystemMessage] = useState("");
   const [cart, setCart] = useState([]);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -265,6 +267,22 @@ const handleDeleteAll = async () => {
       }
     } catch (error) {
       setSystemMessage("CRITICAL: Network execution failure.");
+    }
+  };
+  
+  const handleNearbySearch = async () => {
+    if (!locationQuery.trim()) {
+      alert("Please enter a location to search.");
+      return;
+    }
+    try {
+      const response = await fetch(`/api/v1/products/nearby?location=${encodeURIComponent(locationQuery)}`);
+      const result = await response.json();
+      if (result.status === "success") {
+        setNearbyItems(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch nearby deals.", error);
     }
   };
   
@@ -706,6 +724,55 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
               <div style={styles.alert}>Your cart is empty. Add some deals!</div>
             )}
           </div>
+        ) : view === "nearby" ? (
+          <div>
+            <h2 style={{ fontSize: "20px", marginBottom: "20px", fontWeight: "bold" }}>📍 Nearby Deals</h2>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+              <input
+                type="text"
+                style={{ ...styles.input, marginBottom: 0, flex: 1 }}
+                placeholder="Search by area e.g. Bedok, Tampines..."
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleNearbySearch()}
+              />
+              <button
+                onClick={handleNearbySearch}
+                style={{
+                  padding: "14px 20px",
+                  background: "linear-gradient(135deg, #0078D4 0%, #106EBE 100%)",
+                  color: "#FFF",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  fontSize: "14px"
+                }}
+              >
+                Search
+              </button>
+            </div>
+            {nearbyItems.length > 0 ? (
+              nearbyItems.map((item, idx) => {
+                const sampleItem = sampleItems.find(si => si.name === item.ProductName);
+                return (
+                  <div key={idx} style={styles.card}>
+                    <div style={{ fontSize: "48px", marginBottom: "12px", textAlign: "center" }}>{sampleItem ? sampleItem.image : "🍱"}</div>
+                    <span style={styles.tag}>{item.Quantity} portions left</span>
+                    <div style={styles.title}>{item.ProductName}</div>
+                    <div style={styles.priceRow}>
+                      <span style={styles.newPrice}>${item.DiscountPrice.toFixed(2)}</span>
+                      <span style={styles.oldPrice}>Original ${item.OriginalPrice.toFixed(2)}</span>
+                    </div>
+                    <div style={{ color: "#605E5C", fontSize: "13px" }}>📍 {item.Location}</div>
+                    <div style={{ color: "#605E5C", fontSize: "12px", marginTop: "4px" }}>🏪 {item.VendorName}</div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={styles.alert}>No deals found near "{locationQuery}". Try another area!</div>
+            )}
+          </div>
         ) : null}
         
       </div>
@@ -730,6 +797,10 @@ quickAddItem: { padding: "16px", border: "2px solid #E1DFDD", borderRadius: "12p
               <div>Cart</div>
             </div>
           )}
+          <div style={{ ...styles.navItem, ...(view === "nearby" ? styles.navItemActive : {}) }} onClick={() => setView("nearby")}>
+            <div style={styles.navIcon}>📍</div>
+            <div>Nearby</div>
+          </div>
           <div style={{ ...styles.navItem, ...(view === "dashboard" ? styles.navItemActive : {}) }} onClick={() => setView("dashboard")}>
             <div style={styles.navIcon}>📊</div>
             <div>Stats</div>
